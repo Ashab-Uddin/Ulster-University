@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>My Booking</title>
+      <link rel="stylesheet" href="css/style.css">
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 0;
+    }
+.book {
+  background: url(../image/book-bg.jpg) center center / cover no-repeat;
+  height: 100vh;
+  width: 100%;
+  
+  display: flex;
+  justify-content: center;  /* horizontal centering */
+  align-items: center;      /* vertical centering */
+  padding: 20px;            /* prevent overflow on small screens */
+  box-sizing: border-box;
+}
+.booking-info {
+  max-height: 400px;        /* Limit scroll area height */
+  overflow-y: auto;         /* Enable vertical scrolling */
+  padding-right: 10px;      /* Prevent text from being cut off */
+  font-size: 16px;
+  line-height: 1.8;
+  color: #444;
+}
+.booking-card {
+  background-color: #fdfdfd;
+  padding: 15px;
+  margin-bottom: 20px; /* Gap between cards */
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+  .container {
+  max-width: 600px;
+  width: 100%;
+  padding: 30px 20px;
+  background-color: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+}
+
+
+    h2 {
+      text-align: center;
+      color: #333;
+      margin-bottom: 30px;
+    }
+
+    .booking-info {
+      font-size: 16px;
+      line-height: 1.8;
+      color: #444;
+    }
+
+    .booking-info label {
+      font-weight: bold;
+      color: #111;
+    }
+
+    .no-booking {
+      text-align: center;
+      color: #999;
+      font-size: 18px;
+    }
+
+    .btn-clear {
+      margin-top: 30px;
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background-color: #ff4d4d;
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      transition: background 0.3s;
+    }
+
+    .btn-clear:hover {
+      background-color: #e60000;
+    }
+
+    @media (max-width: 768px) {
+  .booking-info {
+    max-height: 50vh;
+  }
+}
+
+
+  </style>
+</head>
+<body>
+      <!-- HEADER -->
+    <header class="header">
+        <div id="menu-btn" class="fas fa-bars"></div>
+
+        <a href="#" class="logo">coffee <i class="fas fa-mug-hot"></i></a>
+
+        <nav class="navbar">
+            <a href="#home">home</a>
+            <a href="#about">about</a>
+            <a href="#menu">menu</a>
+            <a href="#review">review</a>
+            <a href="#book">book</a>
+            <a href="myBooking.html">My Booking</a>
+        </nav>
+
+        <a href="index.html#book" class="btn">book a table</a>
+    </header>
+  <div class="book">
+    <div class="container center">
+    <h2>My Booking Details</h2>
+    <div id="bookingDisplay" class="booking-info"></div>
+    <button id="clearBtn" class="btn-clear">Clear Booking</button>
+  </div>
+  </div>
+
+ <script>
+  const displayDiv = document.getElementById('bookingDisplay');
+  const clearBtn = document.getElementById('clearBtn');
+
+  // Get stored booking array
+  const bookingData = JSON.parse(localStorage.getItem('bookingFormData')) || [];
+
+  if (bookingData.length > 0) {
+    let content = '';
+
+    bookingData.forEach((data, index) => {
+      content += `
+        <div style="border-bottom:1px solid #ddd; margin-bottom: 20px; padding-bottom: 15px;" class="booking-card">
+          <p><label>Booking #${index + 1}</label></p>
+          <p><label>Name:</label> ${data.name}</p>
+          <p><label>Email:</label> ${data.email}</p>
+          <p><label>Phone Number:</label> ${data.number}</p>
+          <p><label>Start Date:</label> ${new Date(data.startDate).toLocaleString()}</p>
+          <p><label>End Date:</label> ${new Date(data.endDate).toLocaleString()}</p>
+          <p><label>Message:</label> ${data.message || "(No message)"}</p>
+        </div>
+      `;
+    });
+
+    displayDiv.innerHTML = content;
+  } else {
+    displayDiv.innerHTML = `<p class="no-booking">No booking found in localStorage.</p>`;
+    clearBtn.style.display = 'none';
+  }
+
+  // Clear all booking data
+  clearBtn.addEventListener('click', () => {
+    localStorage.removeItem('bookingFormData');
+    alert('All booking data cleared.');
+    location.reload(); // Refresh to update UI
+  });
+
+  // Make # links always go to root + hash
+  document.querySelectorAll('.navbar a[href^="#"]').forEach(link => {
+    link.addEventListener('click', function(e) {
+      e.preventDefault();
+      const hash = this.getAttribute('href'); // e.g., "#menu"
+      const baseURL = window.location.origin + '/';
+      window.location.href = baseURL + hash;
+    });
+  });
+</script>
+
+</body>
+</html>
