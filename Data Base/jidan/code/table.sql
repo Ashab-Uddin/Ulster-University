@@ -1,75 +1,61 @@
--- Use or create database
-CREATE DATABASE IF NOT EXISTS library_mgmt;
-USE library_mgmt;
-
--- Members
-CREATE TABLE Member (
-  member_id INT AUTO_INCREMENT PRIMARY KEY,
-  membership_id VARCHAR(20) NOT NULL UNIQUE,
-  name VARCHAR(150) NOT NULL,
-  address TEXT,
-  email VARCHAR(255) UNIQUE,
-  phone VARCHAR(30),
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB;
-
--- Authors
-CREATE TABLE Author (
-  author_id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(150) NOT NULL,
-  nationality VARCHAR(100),
-  biography TEXT
-) ENGINE=InnoDB;
-
--- Genres
-CREATE TABLE Genre (
-  genre_id INT AUTO_INCREMENT PRIMARY KEY,
-  genre_name VARCHAR(100) NOT NULL UNIQUE
-) ENGINE=InnoDB;
-
--- Books
-CREATE TABLE Book (
-  book_id INT AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  isbn VARCHAR(20) UNIQUE,
-  publication_year YEAR,
-  total_copies INT NOT NULL DEFAULT 1,
-  available_copies INT NOT NULL DEFAULT 1,
-  status ENUM('in_circulation','unavailable') NOT NULL DEFAULT 'in_circulation',
-  notes TEXT
-) ENGINE=InnoDB;
-
--- Junction BookAuthor
-CREATE TABLE BookAuthor (
-  book_id INT NOT NULL,
-  author_id INT NOT NULL,
-  PRIMARY KEY (book_id, author_id),
-  CONSTRAINT fk_ba_book FOREIGN KEY (book_id) REFERENCES Book(book_id) ON DELETE CASCADE,
-  CONSTRAINT fk_ba_author FOREIGN KEY (author_id) REFERENCES Author(author_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- Junction BookGenre
-CREATE TABLE BookGenre (
-  book_id INT NOT NULL,
-  genre_id INT NOT NULL,
-  PRIMARY KEY (book_id, genre_id),
-  CONSTRAINT fk_bg_book FOREIGN KEY (book_id) REFERENCES Book(book_id) ON DELETE CASCADE,
-  CONSTRAINT fk_bg_genre FOREIGN KEY (genre_id) REFERENCES Genre(genre_id) ON DELETE CASCADE
-) ENGINE=InnoDB;
-
--- Borrowing
-CREATE TABLE Borrowing (
-  borrowing_id INT AUTO_INCREMENT PRIMARY KEY,
-  member_id INT NOT NULL,
-  book_id INT NOT NULL,
-  borrow_date DATE NOT NULL,
-  due_date DATE NOT NULL,
-  return_date DATE DEFAULT NULL,
-  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_b_member FOREIGN KEY (member_id) REFERENCES Member(member_id) ON DELETE RESTRICT,
-  CONSTRAINT fk_b_book FOREIGN KEY (book_id) REFERENCES Book(book_id) ON DELETE RESTRICT
-) ENGINE=InnoDB;
-
--- Indexes to speed queries
-CREATE INDEX idx_borrow_member_date ON Borrowing(member_id, borrow_date);
-CREATE INDEX idx_book_status ON Book(status);
+DROP DATABASE IF EXISTS LibraryMS; 
+CREATE DATABASE LibraryMS; 
+USE LibraryMS; 
+CREATE TABLE Members ( 
+member_id INT PRIMARY KEY, 
+name VARCHAR(100) NOT NULL, 
+email VARCHAR(150) NOT NULL UNIQUE, 
+phone VARCHAR(30), 
+address VARCHAR(255) 
+); 
+CREATE TABLE Books ( 
+isbn VARCHAR(20) PRIMARY KEY, 
+title VARCHAR(200) NOT NULL, 
+publication_year YEAR NOT NULL, 
+copies_available INT NOT NULL DEFAULT 0, 
+status ENUM('Available','Repair','Lost') NOT NULL DEFAULT 'Available', 
+CONSTRAINT chk_copies_nonneg CHECK (copies_available >= 0) 
+); 
+CREATE TABLE Genres ( 
+genre_id INT PRIMARY KEY, 
+genre_name VARCHAR(60) NOT NULL UNIQUE 
+); 
+CREATE TABLE Authors ( 
+author_id INT PRIMARY KEY, 
+name VARCHAR(120) NOT NULL, 
+nationality VARCHAR(80), 
+biography TEXT 
+); 
+CREATE TABLE BookGenres ( 
+isbn VARCHAR(20) NOT NULL, 
+genre_id INT NOT NULL, 
+PRIMARY KEY (isbn, genre_id), 
+FOREIGN KEY (isbn) REFERENCES Books(isbn) 
+ON DELETE CASCADE ON UPDATE CASCADE, 
+FOREIGN KEY (genre_id) REFERENCES Genres(genre_id) 
+ON DELETE RESTRICT ON UPDATE CASCADE 
+); 
+CREATE TABLE BookAuthors ( 
+isbn VARCHAR(20) NOT NULL, 
+author_id INT NOT NULL, 
+PRIMARY KEY (isbn, author_id), 
+FOREIGN KEY (isbn) REFERENCES Books(isbn) 
+ON DELETE CASCADE ON UPDATE CASCADE, 
+FOREIGN KEY (author_id) REFERENCES Authors(author_id) 
+ON DELETE RESTRICT ON UPDATE CASCADE 
+); 
+CREATE TABLE Borrowings ( 
+borrow_id INT PRIMARY KEY, 
+member_id INT NOT NULL, 
+isbn VARCHAR(20) NULL, 
+borrow_date DATE NOT NULL, 
+due_date DATE NOT NULL, 
+return_date DATE NULL, 
+CONSTRAINT chk_due_after_borrow CHECK (due_date >= borrow_date), 
+CONSTRAINT chk_return_after_borrow 
+CHECK (return_date IS NULL OR return_date >= borrow_date), 
+FOREIGN KEY (member_id) REFERENCES Members(member_id) 
+ON DELETE RESTRICT ON UPDATE CASCADE, 
+FOREIGN KEY (isbn) REFERENCES Books(isbn) 
+ON DELETE SET NULL ON UPDATE CASCADE 
+); 
