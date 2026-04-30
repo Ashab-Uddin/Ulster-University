@@ -112,6 +112,66 @@ CREATE TABLE Lesson (
         ON UPDATE CASCADE
 );
 
+
+
+-- STORED PROCEDURE: AddNewCustomerWithLesson
+-- Business Process 1: Add a new customer with lesson details
+-- (vehicle and instructor can be NULL at booking time)
+DELIMITER $$
+
+CREATE PROCEDURE AddNewCustomerWithLesson(
+    IN p_cust_id     VARCHAR(10),
+    IN p_name        VARCHAR(100),
+    IN p_address1    VARCHAR(100),
+    IN p_town        VARCHAR(50),
+    IN p_postcode    VARCHAR(10),
+    IN p_email       VARCHAR(100),
+    IN p_dob         DATE,
+    IN p_phone       VARCHAR(30),
+    IN p_lesson_id   VARCHAR(15),
+    IN p_date        DATE,
+    IN p_time        INT,
+    IN p_pickup      VARCHAR(150),
+    IN p_type        VARCHAR(20),
+    IN p_cost        DECIMAL(8,2)
+)
+BEGIN
+    -- Insert the customer
+    INSERT INTO Customer (customer_id, cust_name, address1, town, postcode, email, dob, phone)
+    VALUES (p_cust_id, p_name, p_address1, p_town, p_postcode, p_email, p_dob, p_phone);
+
+    -- Insert the lesson without vehicle or instructor (NULL allowed by design)
+    INSERT INTO Lesson (lesson_id, lesson_date, start_time, pickup_point, lesson_type, completed, cost, customer_id, instructor_id, reg_number)
+    VALUES (p_lesson_id, p_date, p_time, p_pickup, p_type, 0, p_cost, p_cust_id, NULL, NULL);
+
+    SELECT CONCAT('Customer ', p_name, ' and lesson ', p_lesson_id, ' added successfully.') AS result;
+END$$
+
+-- TRIGGER: trg_PreventDoubleBooking
+-- Prevents booking an instructor who is already booked at the
+-- same date and start time (data integrity guard).
+CREATE TRIGGER trg_PreventDoubleBooking
+BEFORE INSERT ON Lesson
+FOR EACH ROW
+BEGIN
+    DECLARE conflict_count INT;
+
+    IF NEW.instructor_id IS NOT NULL THEN
+        SELECT COUNT(*) INTO conflict_count
+        FROM Lesson
+        WHERE instructor_id = NEW.instructor_id
+          AND lesson_date   = NEW.lesson_date
+          AND start_time    = NEW.start_time;
+
+        IF conflict_count > 0 THEN
+            SIGNAL SQLSTATE '45000'
+            SET MESSAGE_TEXT = 'Instructor already booked at this date and time.';
+        END IF;
+    END IF;
+END$$
+
+DELIMITER ;
+
 -- POPULATE: VehicleType
 INSERT INTO VehicleType VALUES
     ('C001', 'Car - manual',     'Small car, 2 litres or less. Manual transmission. Petrol or diesel.'),
@@ -216,65 +276,6 @@ INSERT INTO Lesson VALUES
     ('L21-961', '2021-02-27', 12, 'Depot',                                                      'Standard',    0, 50.00,  'D13-245', 'E2045', 'BL67 YPE'),
     ('L21-977', '2021-02-27', 11, 'Home Address',                                               'Standard',    0, 40.00,  'D13-R20', 'E9274', 'LLZ 9362');
 
--- STORED PROCEDURE: AddNewCustomerWithLesson
--- Business Process 1: Add a new customer with lesson details
--- (vehicle and instructor can be NULL at booking time)
-DELIMITER $$
-
-CREATE PROCEDURE AddNewCustomerWithLesson(
-    IN p_cust_id     VARCHAR(10),
-    IN p_name        VARCHAR(100),
-    IN p_address1    VARCHAR(100),
-    IN p_town        VARCHAR(50),
-    IN p_postcode    VARCHAR(10),
-    IN p_email       VARCHAR(100),
-    IN p_dob         DATE,
-    IN p_phone       VARCHAR(30),
-    IN p_lesson_id   VARCHAR(15),
-    IN p_date        DATE,
-    IN p_time        INT,
-    IN p_pickup      VARCHAR(150),
-    IN p_type        VARCHAR(20),
-    IN p_cost        DECIMAL(8,2)
-)
-BEGIN
-    -- Insert the customer
-    INSERT INTO Customer (customer_id, cust_name, address1, town, postcode, email, dob, phone)
-    VALUES (p_cust_id, p_name, p_address1, p_town, p_postcode, p_email, p_dob, p_phone);
-
-    -- Insert the lesson without vehicle or instructor (NULL allowed by design)
-    INSERT INTO Lesson (lesson_id, lesson_date, start_time, pickup_point, lesson_type, completed, cost, customer_id, instructor_id, reg_number)
-    VALUES (p_lesson_id, p_date, p_time, p_pickup, p_type, 0, p_cost, p_cust_id, NULL, NULL);
-
-    SELECT CONCAT('Customer ', p_name, ' and lesson ', p_lesson_id, ' added successfully.') AS result;
-END$$
-
--- TRIGGER: trg_PreventDoubleBooking
--- Prevents booking an instructor who is already booked at the
--- same date and start time (data integrity guard).
-CREATE TRIGGER trg_PreventDoubleBooking
-BEFORE INSERT ON Lesson
-FOR EACH ROW
-BEGIN
-    DECLARE conflict_count INT;
-
-    IF NEW.instructor_id IS NOT NULL THEN
-        SELECT COUNT(*) INTO conflict_count
-        FROM Lesson
-        WHERE instructor_id = NEW.instructor_id
-          AND lesson_date   = NEW.lesson_date
-          AND start_time    = NEW.start_time;
-
-        IF conflict_count > 0 THEN
-            SIGNAL SQLSTATE '45000'
-            SET MESSAGE_TEXT = 'Instructor already booked at this date and time.';
-        END IF;
-    END IF;
-END$$
-
-DELIMITER ;
-
-
 
 -- SHOW TABLE CONTENTS 
 SELECT * FROM VehicleType;
@@ -284,3 +285,93 @@ SELECT * FROM InstructorQualification;
 SELECT * FROM Customer;
 SELECT * FROM LessonType;
 SELECT * FROM Lesson;
+
+
+-- BUSINESS PROCESS QUERIES
+
+-- -------------------------------------------------------
+-- BP1: Add a new customer with lesson (no vehicle/instructor)
+-- Example: New customer 'D18-999' booking a Standard lesson
+-- -------------------------------------------------------
+
+
+CALL AddNewCustomerWithLesson(
+    'D18-999', 'Satirtha Dhar', '23 Burslem Street', 'London', 'E1 2LL',
+    'satirthadhar0@gmail.com', '2002-08-12', '0743814213',
+    'L21-999', '2021-04-01', 10, 'Home Address', 'Standard', 40.00
+);
+
+-- -------------------------------------------------------
+-- BP2: Number of times each vehicle is used AND amount charged
+--      for lessons booked between two given dates
+-- -------------------------------------------------------
+SELECT
+    v.reg_number,
+    CONCAT(v.make, ' ', v.model) AS vehicle,
+    COUNT(l.lesson_id)           AS times_used,
+    SUM(l.cost)                  AS total_charged
+FROM Vehicle v
+JOIN Lesson l ON v.reg_number = l.reg_number
+WHERE l.lesson_date BETWEEN '2021-02-01' AND '2021-03-31'
+GROUP BY v.reg_number, vehicle
+ORDER BY times_used DESC;
+
+-- -------------------------------------------------------
+-- BP3: Customers who completed more than one lesson
+--      with count and total cost of completed lessons
+-- -------------------------------------------------------
+SELECT
+    c.cust_name,
+    COUNT(l.lesson_id)  AS lessons_completed,
+    SUM(l.cost)         AS total_cost
+FROM Customer c
+JOIN Lesson l ON c.customer_id = l.customer_id
+WHERE l.completed = 1
+GROUP BY c.customer_id, c.cust_name
+HAVING COUNT(l.lesson_id) > 1
+ORDER BY lessons_completed DESC;
+
+-- -------------------------------------------------------
+-- BP4: Instructors available at a given date and time,
+--      with vehicle types they are qualified for.
+--      Test: 11:00 on 1 April 2021
+-- -------------------------------------------------------
+SELECT
+    i.instructor_id,
+    i.instr_name,
+    i.grade,
+    vt.type_name        AS qualified_vehicle_type,
+    vt.type_desc        AS vehicle_description
+FROM Instructor i
+JOIN InstructorQualification iq ON i.instructor_id = iq.instructor_id
+JOIN VehicleType vt             ON iq.type_id       = vt.type_id
+WHERE i.instructor_id NOT IN (
+    SELECT instructor_id
+    FROM Lesson
+    WHERE lesson_date = '2021-04-01'
+      AND start_time  = 11
+      AND instructor_id IS NOT NULL
+)
+ORDER BY i.instr_name, vt.type_name;
+
+-- -------------------------------------------------------
+-- BP5a: Remove a vehicle temporarily (mark unavailable)
+--       Example: remove 'AF56 WWJ' for servicing
+-- -------------------------------------------------------
+UPDATE Vehicle
+SET is_available = 0
+WHERE reg_number = 'AF56 WWJ';
+
+-- BP5b: List all vehicles currently unavailable
+SELECT
+    v.reg_number,
+    CONCAT(v.make, ' ', v.model) AS vehicle,
+    vt.type_name                 AS vehicle_type,
+    v.last_service
+FROM Vehicle v
+JOIN VehicleType vt ON v.type_id = vt.type_id
+WHERE v.is_available = 0
+ORDER BY v.reg_number;
+
+-- Restore vehicle (bring back online after servicing)
+UPDATE Vehicle SET is_available = 1 WHERE reg_number = 'AF56 WWJ';
