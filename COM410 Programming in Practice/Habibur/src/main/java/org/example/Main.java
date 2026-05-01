@@ -1,3 +1,5 @@
+package org.example;
+
 import java.util.*;
 
 public class Main {
@@ -111,7 +113,7 @@ public class Main {
                 System.out.println("(none)");
             } else {
                 for (int i = 0; i < col.size(); i++) {
-                        System.out.println((i + 1) + ": " + col.get(i));
+                    System.out.println((i + 1) + ": " + col.get(i));
                 }
             }
         }
