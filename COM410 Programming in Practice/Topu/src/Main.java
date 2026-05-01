@@ -30,7 +30,7 @@ public class Main {
             try { n = Integer.parseInt(line); } catch (Exception e) { n = 0; }
         }
         for (int i = 1; i <= n; i++) {
-            System.out.print("Enter name for player " + i + " (type Computer for AI): ");
+            System.out.print("Enter name for player  " + i + ":" );
             String name = scanner.nextLine().trim();
             if (name.isEmpty()) name = "Player" + i;
             players.add(new Player(name));
@@ -94,6 +94,10 @@ public class Main {
             // show running scores
             System.out.println("Scores after round " + round + ":");
             for (Player p : players) System.out.println(p.getName() + ": " + p.getRoundPoints());
+
+            // wait for user to press Enter to continue to next round
+            System.out.print("Press Enter to continue...");
+            scanner.nextLine();
         }
     }
 
@@ -101,7 +105,15 @@ public class Main {
         System.out.println("\n--- Collections and Round Scores ---");
         for (Player p : players) {
             System.out.println(p.getName() + " - Round points: " + p.getRoundPoints());
-            System.out.println("Collected: " + formatCards(p.getCollected()));
+            System.out.println("Collected:");
+            List<Card> col = p.getCollected();
+            if (col.isEmpty()) {
+                System.out.println("(none)");
+            } else {
+                for (int i = 0; i < col.size(); i++) {
+                    System.out.println((i + 1) + ":" + col.get(i));
+                }
+            }
         }
     }
 
@@ -126,15 +138,34 @@ public class Main {
                 toDiscard = new Random().nextInt(max + 1);
                 System.out.println(" Computer chooses to discard " + toDiscard + " card(s).");
             } else {
-                while (true) {
-                    System.out.print("Discard how many cards? (0,1,2) up to collected size: ");
-                    String line = scanner.nextLine().trim();
-                    try { toDiscard = Integer.parseInt(line); } catch (Exception e) { toDiscard = -1; }
-                    if (toDiscard >=0 && toDiscard <=2 && toDiscard <= p.getCollected().size()) break;
+                // ask player whether they want to replace cards
+                System.out.print("Do you want to replace cards? (Yes/no): ");
+                String ans = scanner.nextLine().trim().toLowerCase();
+                if (!ans.isEmpty() && ans.charAt(0) == 'y') {
+                    int max = Math.min(2, p.getCollected().size());
+                    if (max == 0) {
+                        System.out.println("You have no collected cards to replace.");
+                        toDiscard = 0;
+                    } else {
+                        // ask how many to replace (1..max)
+                        while (true) {
+                            System.out.print("How many cards do you want to replace? (1-" + max + "): ");
+                            String line = scanner.nextLine().trim();
+                            try { toDiscard = Integer.parseInt(line); } catch (Exception e) { toDiscard = -1; }
+                            if (toDiscard >=1 && toDiscard <= max) break;
+                        }
+                        // show current cards before selecting which to discard
+                        System.out.println("Your cards:");
+                        List<Card> ccol = p.getCollected();
+                        for (int i = 0; i < ccol.size(); i++) System.out.println((i+1) + ":" + ccol.get(i));
+                    }
+                } else {
+                    System.out.println("No adjustment made.");
+                    toDiscard = 0;
                 }
             }
 
-            if (toDiscard == 0) { System.out.println("No cards discarded."); p.setUsedAdjustment(true); continue; }
+            if (toDiscard == 0) { System.out.println("No cards discarded."); continue; }
 
             List<Card> removed = new ArrayList<>();
             if (p.isComputer()) {

@@ -35,10 +35,10 @@ public class Card {
         }
         String s;
         switch (suit) {
-            case HEARTS: s = "♥"; break;
-            case DIAMONDS: s = "♦"; break;
-            case CLUBS: s = "♣"; break;
-            default: s = "♠"; break;
+            case HEARTS: s = " of Harts"; break;
+            case DIAMONDS: s = " of Diamond"; break;
+            case CLUBS: s = " of Clubs"; break;
+            default: s = " of Spade"; break;
         }
         return r + s;
     }
